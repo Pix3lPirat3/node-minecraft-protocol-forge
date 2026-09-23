@@ -128,4 +128,36 @@ function installFabricRegistryMappings (client, registries, options = {}) {
   return true
 }
 
+// Remove the registry schemas and mappings this helper installed for a client, without touching caller-owned custom
+// schemas. Called when a connection re-enters configuration: a backend that sends no registry sync (Fabric skips it when
+// there is nothing to remap) must not inherit the previous backend's mappings, or its vanilla ids decode with stale ones.
+function resetFabricRegistryMappings (client) {
+  const previous = installed.get(client)
+  if (!previous) {
+    if (client.fabricRegistries) delete client.fabricRegistries
+    return false
+  }
+  const ownedEntries = {
+    Particle: 'fabric_Particle',
+    fabric_Particle: previous.particle,
+    SlotComponentType: 'fabric_SlotComponentType',
+    fabric_SlotComponentType: previous.componentType,
+    SlotComponent: 'fabric_SlotComponent',
+    fabric_SlotComponent: previous.component
+  }
+  const version = minecraftData(client.version).version.majorVersion
+  const existing = client.customPackets?.[version]
+  if (existing?.types) {
+    const types = { ...existing.types }
+    for (const [name, value] of Object.entries(ownedEntries)) {
+      if (types[name] === value) delete types[name] // only our schemas; a caller-owned entry has a different value
+    }
+    client.customPackets = { ...client.customPackets, [version]: { ...existing, types } }
+  }
+  installed.delete(client)
+  delete client.fabricRegistries
+  return true
+}
+
 module.exports = installFabricRegistryMappings
+module.exports.reset = resetFabricRegistryMappings

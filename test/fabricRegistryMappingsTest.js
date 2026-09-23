@@ -161,6 +161,20 @@ describe('Fabric registry mappings', () => {
     assert.equal(client.fabricRegistries.get('minecraft:sound_event').entries.get('bettercombat:sword_slash'), 1862)
   })
 
+  it('reset removes the helper-owned schemas and registries but keeps caller schemas', () => {
+    const key = minecraftData('1.21.11').version.majorVersion
+    const client = { version: '1.21.11', customPackets: { [key]: { types: { 'caller:thing': 'void' } } } }
+    installFabricRegistryMappings(client, registries(), options)
+    assert.notEqual(client.customPackets[key].types.Particle, undefined)
+    assert.notEqual(client.fabricRegistries, undefined)
+    assert.equal(installFabricRegistryMappings.reset(client), true)
+    assert.equal(client.customPackets[key].types.Particle, undefined)
+    assert.equal(client.customPackets[key].types.SlotComponent, undefined)
+    assert.equal(client.customPackets[key].types['caller:thing'], 'void') // caller-owned schema preserved
+    assert.equal(client.fabricRegistries, undefined)
+    assert.equal(installFabricRegistryMappings.reset(client), false) // idempotent once nothing is installed
+  })
+
   it('rejects incomplete codecs, unknown registries, and caller schema conflicts', () => {
     assert.throws(() => installFabricRegistryMappings({ version: '1.21.11' }, registries()), /Missing .* codec/)
     const unknown = registries()

@@ -1,5 +1,6 @@
 const { ProtoDef } = require('protodef')
 const decodeRegistries = require('./fabricRegistries')
+const registryMappings = require('./fabricRegistryMappings')
 
 const proto = new ProtoDef(false)
 proto.addTypes(require('./data/fabric.json').types)
@@ -83,6 +84,9 @@ module.exports = function (client, options = {}) {
       registered.clear()
       remoteChannels.configuration.clear()
       remoteChannels.play.clear()
+      // Drop the previous backend's Fabric registry mappings/schemas (a transfer to a backend that sends no new sync must
+      // not keep them); caller-owned custom schemas are preserved. No-op if no mappings were installed.
+      registryMappings.reset(client)
     }
   })
 

@@ -100,4 +100,19 @@ describe('Fabric common networking', () => {
     client.receive('c:register', registration('play'))
     assert.equal(client.errors.length, 1)
   })
+
+  it('drops installed Fabric registry mappings when re-entering configuration', () => {
+    const { installFabricRegistryMappings } = require('..')
+    const { gunzipSync } = require('zlib')
+    const decodeRegistries = require('../src/client/fabricRegistries')
+    const fixture = require('./fixtures/fabric-1.21.11-registries.json')
+    const all = decodeRegistries(gunzipSync(Buffer.from(fixture.gzipBase64, 'base64')))
+    const soundOnly = new Map([['minecraft:sound_event', all.get('minecraft:sound_event')]])
+    const { client } = setup()
+    client.version = '1.21.11'
+    installFabricRegistryMappings(client, soundOnly)
+    assert.notEqual(client.fabricRegistries, undefined)
+    client.emit('state', 'configuration') // transfer to a backend that sends no new registry sync
+    assert.equal(client.fabricRegistries, undefined)
+  })
 })
